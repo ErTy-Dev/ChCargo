@@ -56,7 +56,6 @@ async function convertFile(e) {
 			const sheet = workbook.Sheets[sheetName];
 
 			const jsonDataForm = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
 			// Первая строка (индекс 0) содержит названия столбцов
 			const headers = jsonDataForm[1];
 
@@ -73,7 +72,7 @@ async function convertFile(e) {
 				});
 				return obj;
 			});
-
+			console.log(translatedData);
 			const newTable = [...translatedData]
 				.sort((a, b) => {
 					const aN = a['Маркировка'] || 0;
@@ -99,7 +98,7 @@ async function convertFile(e) {
 			const link = document.createElement('a');
 			link.href = blobURL;
 			link.download = 'Новая таблица заказов.xlsx';
-			link.click();
+			// link.click();
 
 			URL.revokeObjectURL(blobURL);
 		} catch (error) {
