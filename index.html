@@ -3,8 +3,9 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
 		<title>XLSX to JSON Converter</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+
 		<style>
 			body {
 				font-family: Arial, sans-serif;
@@ -13,10 +14,6 @@
 
 			.container {
 				text-align: center;
-			}
-
-			h1 {
-				color: #333;
 			}
 
 			input {
@@ -33,17 +30,15 @@
 				margin-top: 20px;
 			}
 		</style>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 	</head>
 
 	<body>
 		<div class="container">
 			<h1>Демо конвертер</h1>
 			<input type="file" id="fileInput" accept=".xlsx" />
-			<button onclick="convertFile()">Convert</button>
-			<pre id="jsonOutput"></pre>
+			<button id="convertButton">Конвертировать</button>
 		</div>
-
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-		<script src="/main.js"></script>
 	</body>
+	<script src="/main.js"></script>
 </html>
