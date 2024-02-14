@@ -1,3 +1,4 @@
+'use strict';
 const translated = {
 	运输账单: 'счет за доставку',
 	单号明细: 'Детали номера заказа',
@@ -25,72 +26,72 @@ const translated = {
 };
 
 async function convertFile(e) {
-	const fileInput = document.getElementById('fileInput');
-	const buttonText = e.target.innerText;
-	const file = fileInput.files[0];
+	try {
+		const fileInput = document.getElementById('fileInput');
+		const buttonText = e.target.innerText;
+		e.target.setAttribute('aria-invalid', false);
 
-	if (!file) {
-		alert('Выберите excel file');
-		return;
-	}
+		const loadStart = () => {
+			e.target.innerHTML = '';
+			e.target.setAttribute('aria-busy', true);
+		};
+		loadStart();
+		const loadFinish = () => {
+			e.target.setAttribute('aria-busy', false);
+			e.target.innerHTML = buttonText;
+		};
 
-	const loadStart = () => {
-		e.target.innerHTML = '';
-		e.target.setAttribute('aria-busy', true);
-	};
+		const file = fileInput.files[0];
+		if (!file) {
+			alert('Выберете файл!');
+		}
+		const reader = new FileReader();
 
-	const loadFinish = () => {
-		e.target.setAttribute('aria-busy', false);
-		e.target.innerHTML = buttonText;
-	};
+		reader.onloadend = () => {
+			loadFinish();
+		};
 
-	loadStart();
+		reader.onload = function (event) {
+			const data = event.target.result;
+			const wb = XLSX.read(new Uint8Array(data), { type: 'array', bookVBA: true });
+			const sheetNames = wb.SheetNames;
+			const newWorkbook = XLSX.utils.book_new();
 
-	const reader = new FileReader();
+			sheetNames.forEach(sheetName => {
+				const sheet = wb.Sheets[sheetName];
+				const jsonDataForm = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+				const headers = jsonDataForm[1];
+				const dataRows = jsonDataForm.slice(2);
 
-	reader.onloadend = async function () {
-		try {
-			const data = new Uint8Array(reader.result);
-			const workbook = XLSX.read(data, { type: 'array' });
-			const sheetName = workbook.SheetNames[0];
-			const sheet = workbook.Sheets[sheetName];
+				const translatedData = dataRows.map(row => {
+					const obj = {};
 
-			const jsonDataForm = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+					headers.forEach((header, index) => {
+						const translatedWord = translated[header];
+						obj[translatedWord || header] = row[index];
+					});
 
-			// Первая строка (индекс 0) содержит названия столбцов
-			const headers = jsonDataForm[1];
-
-			// Остальные строки содержат данные
-			const dataRows = jsonDataForm.slice(2);
-			// Преобразуем данные в массив объектов, используя названия столбцов в качестве ключей
-			const translatedData = dataRows.map(row => {
-				const obj = {};
-
-				headers.forEach((header, index) => {
-					// Применяем перевод только для заголовков, которые существуют в словаре translated
-					const translatedWord = translated[header];
-					obj[translatedWord || header] = row[index]; // Используем переведенный заголовок, если он есть
+					return obj;
 				});
-				return obj;
+
+				const newTable = [...translatedData]
+					.sort((a, b) => {
+						const aN = a['Маркировка'] || 0;
+						const bN = b['Маркировка'] || 0;
+						if (!aN || !bN) return 0;
+						return aN.localeCompare(bN);
+					})
+					.map(item => ({
+						'Номер коробки': item['Номер коробки'],
+						Маркировка: item['Маркировка'],
+						'Номер накладной': item['Номер накладной'],
+					}))
+					.filter(item => Boolean(item['Маркировка']));
+
+				const newSheet = XLSX.utils.json_to_sheet(newTable);
+				XLSX.utils.book_append_sheet(newWorkbook, newSheet, sheetName);
 			});
 
-			const newTable = [...translatedData]
-				.sort((a, b) => {
-					const aN = a['Маркировка'] || 0;
-					const bN = b['Маркировка'] || 0;
-					if (!aN || !bN) return 0;
-					return aN.localeCompare(bN);
-				})
-				.map(item => ({
-					'Номер коробки': item['Номер коробки'],
-					Маркировка: item['Маркировка'],
-					'Номер накладной': item['Номер накладной'],
-				}))
-				.filter(item => Boolean(item['Маркировка']));
-
-			const newSheet = XLSX.utils.json_to_sheet(newTable);
-			const newWorkbook = XLSX.utils.book_new();
-			XLSX.utils.book_append_sheet(newWorkbook, newSheet, sheetName);
 			const newBinaryData = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'array' });
 
 			const blob = new Blob([new Uint8Array(newBinaryData)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -99,17 +100,21 @@ async function convertFile(e) {
 			const link = document.createElement('a');
 			link.href = blobURL;
 			link.download = 'Новая таблица заказов.xlsx';
+			document.body.appendChild(link);
 			link.click();
+		};
 
-			URL.revokeObjectURL(blobURL);
-		} catch (error) {
-			console.error('An error occurred:', error);
-			alert('An error occurred. Please check the console for details.');
-		} finally {
-			loadFinish();
-		}
-	};
-
-	reader.readAsArrayBuffer(file);
+		reader.readAsArrayBuffer(file);
+	} catch (error) {
+		console.error(error);
+		e.target.setAttribute('aria-invalid', true);
+		const p = document.createElement('p');
+		p.append(error);
+		p.style.color = 'red';
+		document.body.querySelector('.container').append(p);
+	}
 }
+
+document.querySelector('#convertButton').addEventListener('click', convertFile);
+
 document.querySelector('#convertButton').addEventListener('click', convertFile);
